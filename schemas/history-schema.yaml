@@ -1,0 +1,19 @@
+index:
+  name: "chat:embed"
+  prefix: "agent:user:*:chat:msg:"
+  storage_type: hash
+
+fields:
+  - name: content
+    type: text
+  - name: user_id
+    type: tag
+  - name: ts
+    type: tag
+  - name: vector
+    type: vector
+    attrs:
+      algorithm: HNSW
+      dims: 1536
+      distance_metric: cosine
+      datatype: float32
