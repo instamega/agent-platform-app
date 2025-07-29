@@ -10,13 +10,13 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 KB_DATA_PATH = os.getenv("KB_DATA_PATH")
-r = Redis(
+client = Redis(
     host=os.getenv("REDIS_HOST", "localhost"),
     port=int(os.getenv("REDIS_PORT", 6379)),
     password=os.getenv("REDIS_PASSWORD"),
     decode_responses=True
 )
-r.ping()
+client.ping()
 
 def extract_text(file_path):
     if file_path.endswith('.md'):
@@ -37,7 +37,7 @@ def seed_kb(file_path, model_name, key_prefix):
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
     embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=OPENAI_API_KEY)
     for chunk in splitter.split_text(text):
-        r.hset(f"{key_prefix}:{hash(chunk)}", mapping={
+        client.hset(f"{key_prefix}:{hash(chunk)}", mapping={
             "content": chunk,
             "vector": json.dumps(embeddings.embed_query(chunk))
         })

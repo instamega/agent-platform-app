@@ -7,7 +7,7 @@ from redisvl.index import SearchIndex
 
 load_dotenv()
 
-r = Redis(
+client = Redis(
     host=os.getenv("REDIS_HOST", "localhost"),
     port=int(os.getenv("REDIS_PORT", 6379)),
     password=os.getenv("REDIS_PASSWORD", None)
@@ -25,7 +25,7 @@ for schema_file in schema_files:
     try:
         print(f"Processing schema file: {schema_file}")
         schema = IndexSchema.from_yaml(schema_file)
-        index = SearchIndex(schema, r)
+        index = SearchIndex(schema, client)
         index.create()
         print(f"Index '{schema.index.name}' created successfully from {schema_file}")
     except Exception as e:

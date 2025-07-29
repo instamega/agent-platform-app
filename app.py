@@ -30,14 +30,14 @@ client.ping()
 
 
 # ───────────────────────  HELPERS  ─────────────────────────────────────
-vec  = OpenAITextVectorizer()
+vectorizer = OpenAITextVectorizer()
 llm  = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
 SYSTEM_PROMPT = client.get("agent:config:persona") or "You are ChatAgent."
 
 def key_recent(uid):      return f"agent:user:{uid}:chat:recent"
 def key_msg(uid, mid):    return f"agent:user:{uid}:chat:msg:{mid}"
 
-def embed(txt: str):      return vec.embed(txt)
+def embed(txt: str):      return vectorizer.embed(txt)
 
 # ───────────────────────  MEMORY WRITE  ────────────────────────────────
 def store_chat(uid: str, role: str, content: str, keep_last: int = 20):
