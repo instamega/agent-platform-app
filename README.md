@@ -109,6 +109,36 @@ Features:
 - Supports threaded conversations
 - Uses same knowledge base as CLI version
 
+### Persona Management
+```bash
+python persona_manager.py <command> [options]
+```
+
+Manage agent personalities and system prompts:
+
+**Commands:**
+- `get` - Show current persona
+- `set -t "text"` - Set persona from command line
+- `load -f file.txt` - Load persona from file
+- `save -f file.txt` - Save current persona to file
+- `clear` - Reset to default persona
+- `list` - Show available persona presets
+
+**Examples:**
+```bash
+# View current persona
+python persona_manager.py get
+
+# Load a preset persona
+python persona_manager.py load -f personas/technical_expert.txt
+
+# Set a custom persona
+python persona_manager.py set -t "You are a helpful marketing assistant."
+
+# List available presets
+python persona_manager.py list
+```
+
 ### Programmatic Usage
 ```python
 from app import agent
@@ -123,9 +153,15 @@ print(response)
 ```
 ├── app.py                 # Main chat agent application
 ├── slack_bot.py          # Slack bot integration
+├── persona_manager.py    # Persona management tool
+├── slack_debug.py        # Slack connection diagnostics
 ├── create-indexes.py      # Sets up Redis search indexes
 ├── seed_kb.py            # Knowledge base document ingestion
 ├── requirements.txt      # Python dependencies
+├── personas/             # Persona preset files
+│   ├── helpful_assistant.txt
+│   ├── technical_expert.txt
+│   └── business_advisor.txt
 ├── schemas/              # Redis index schema definitions
 │   ├── agent-kb-schema.yaml
 │   └── history-schema.yaml
