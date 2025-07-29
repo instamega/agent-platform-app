@@ -31,18 +31,18 @@ client.ping()
 
 # ───────────────────────  HELPERS  ─────────────────────────────────────
 vectorizer = OpenAITextVectorizer()
-llm  = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
 SYSTEM_PROMPT = client.get("agent:config:persona") or "You are ChatAgent."
 
-def key_recent(uid):      return f"agent:user:{uid}:chat:recent"
-def key_msg(uid, mid):    return f"agent:user:{uid}:chat:msg:{mid}"
+def key_recent(uid): return f"agent:user:{uid}:chat:recent"
+def key_msg(uid, mid): return f"agent:user:{uid}:chat:msg:{mid}"
 
-def embed(txt: str):      return vectorizer.embed(txt)
+def embed(txt: str): return vectorizer.embed(txt)
 
 # ───────────────────────  MEMORY WRITE  ────────────────────────────────
 def store_chat(uid: str, role: str, content: str, keep_last: int = 20):
-    ts   = str(int(time.time()))
-    m_id = str(uuid.uuid4())       # unique per chunk
+    ts = str(int(time.time()))
+    m_id = str(uuid.uuid4())  # unique per chunk
     # 1) append raw JSON array
     log = client.json().get(key_recent(uid)) or []
     log.append({"role": role, "content": content, "ts": ts})
