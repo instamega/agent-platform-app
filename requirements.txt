@@ -1,3 +1,7 @@
 redis
 python-dotenv
-redisvl 
+redisvl
+slack-sdk
+langchain-openai
+langchain-community
+PyPDF2 

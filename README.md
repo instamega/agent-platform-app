@@ -86,6 +86,29 @@ This starts an interactive chat session where you can:
 - Have the agent remember previous conversations
 - Get answers based on the knowledge base documents
 
+### Slack Bot Integration
+```bash
+python slack_bot.py
+```
+
+To enable Slack integration:
+1. Create a Slack app at https://api.slack.com/apps
+2. Enable Socket Mode and generate an App-Level Token
+3. Add Bot Token Scopes: `chat:write`, `app_mentions:read`, `im:read`, `im:write`
+4. Subscribe to Bot Events: `message.im`, `app_mention`
+5. Set environment variables:
+   ```
+   SLACK_BOT_TOKEN=xoxb-your-bot-token
+   SLACK_APP_TOKEN=xapp-your-app-token
+   ```
+
+Features:
+- Responds to direct messages automatically
+- Responds when mentioned in channels (@botname)
+- Maintains conversation history per user
+- Supports threaded conversations
+- Uses same knowledge base as CLI version
+
 ### Programmatic Usage
 ```python
 from app import agent
@@ -99,6 +122,7 @@ print(response)
 
 ```
 ├── app.py                 # Main chat agent application
+├── slack_bot.py          # Slack bot integration
 ├── create-indexes.py      # Sets up Redis search indexes
 ├── seed_kb.py            # Knowledge base document ingestion
 ├── requirements.txt      # Python dependencies
