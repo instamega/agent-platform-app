@@ -19,33 +19,55 @@ client = Redis(
 client.ping()
 
 def extract_text(file_path):
-    if file_path.endswith('.md'):
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    elif file_path.endswith('.pdf'):
-        text = ""
-        with open(file_path, 'rb') as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
-                text += page.extract_text() or ""
-        return text
-    else:
-        raise ValueError(f"Unsupported file type: {file_path}")
+    try:
+        if file_path.endswith('.md'):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        elif file_path.endswith('.pdf'):
+            text = ""
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    text += page.extract_text() or ""
+            return text
+        else:
+            raise ValueError(f"Unsupported file type: {file_path}")
+    except (FileNotFoundError, PermissionError) as e:
+        print(f"Error reading file {file_path}: {e}")
+        raise
+    except Exception as e:
+        print(f"Unexpected error processing {file_path}: {e}")
+        raise
 
 def seed_kb(file_path, model_name, key_prefix):
-    text = extract_text(file_path)
-    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
-    embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=OPENAI_API_KEY)
-    for chunk in splitter.split_text(text):
-        client.hset(f"{key_prefix}:{hash(chunk)}", mapping={
-            "content": chunk,
-            "vector": json.dumps(embeddings.embed_query(chunk))
-        })
+    try:
+        text = extract_text(file_path)
+        splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
+        embeddings = OpenAIEmbeddings(model=model_name, openai_api_key=OPENAI_API_KEY)
+        for chunk in splitter.split_text(text):
+            client.hset(f"{key_prefix}:{hash(chunk)}", mapping={
+                "content": chunk,
+                "vector": json.dumps(embeddings.embed_query(chunk))
+            })
+        print(f"Successfully processed {file_path}")
+    except Exception as e:
+        print(f"Error processing {file_path}: {e}")
+        raise
 
 file_paths = [os.path.join(KB_DATA_PATH, f) for f in os.listdir(KB_DATA_PATH) if f.endswith(".md") or f.endswith(".pdf")]
 model_name = "text-embedding-ada-002"
 key_prefix = "kb:embed"
 
+if not file_paths:
+    print(f"No files found in {KB_DATA_PATH}")
+    exit(1)
+
 for file_path in file_paths:
-    seed_kb(file_path, model_name, key_prefix)
+    try:
+        seed_kb(file_path, model_name, key_prefix)
+    except Exception as e:
+        print(f"Failed to process {file_path}, continuing with next file...")
+        continue
+
+print(f"Processed {len(file_paths)} files")
 

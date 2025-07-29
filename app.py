@@ -43,64 +43,82 @@ def embed(txt: str): return vectorizer.embed(txt)
 
 # ───────────────────────  MEMORY WRITE  ────────────────────────────────
 def store_chat(uid: str, role: str, content: str, keep_last: int = 20):
-    ts = str(int(time.time()))
-    m_id = str(uuid.uuid4())  # unique per chunk
-    # 1) append raw JSON array
-    log = client.json().get(key_recent(uid)) or []
-    log.append({"role": role, "content": content, "ts": ts})
-    client.json().set(key_recent(uid), "$", log[-keep_last:])
-    # 2) embed & HSET
-    if role == "user":             # only embed user turns (up to you)
-        client.hset(
-            key_msg(uid, m_id),
-            mapping={
-                "content": content,
-                "user_id": uid,
-                "ts": ts,
-                "vector": json.dumps(embed(content))
-            }
-        )
+    try:
+        ts = str(int(time.time()))
+        m_id = str(uuid.uuid4())  # unique per chunk
+        # 1) append raw JSON array
+        log = client.json().get(key_recent(uid)) or []
+        log.append({"role": role, "content": content, "ts": ts})
+        client.json().set(key_recent(uid), "$", log[-keep_last:])
+        # 2) embed & HSET
+        if role == "user":             # only embed user turns (up to you)
+            client.hset(
+                key_msg(uid, m_id),
+                mapping={
+                    "content": content,
+                    "user_id": uid,
+                    "ts": ts,
+                    "vector": json.dumps(embed(content))
+                }
+            )
+    except Exception as e:
+        print(f"Error storing chat for user {uid}: {e}")
+        raise
 
 # ───────────────────────  CONTEXT RETRIEVAL  ──────────────────────────
 def retrieve_context(uid: str, query: str, k: int = 3):
-    # recent verbatim
-    recent = client.json().get(key_recent(uid)) or []
-    # semantic recall (chat)
-    vec_bytes = struct.pack('f' * len(embed(query)), *embed(query))
-    res = client.ft("chat:embed").search(
-        Query(f"@user_id:{{{uid}}}=>[KNN {k} @vector $vec AS score]").return_field("content"),
-        query_params={"vec": vec_bytes}
-    )
-    sem = []
-    if hasattr(res, 'docs'):
-        sem = [{"role": "memory", "content": getattr(doc, 'content', '')} for doc in res.docs]
-    # semantic recall (kb)
-    kb_res = client.ft("kb:embed").search(
-        Query(f"*=>[KNN {k} @vector $vec AS score]").return_field("content"),
-        query_params={"vec": vec_bytes}
-    )
-    kb_sem = []
-    if hasattr(kb_res, 'docs'):
-        kb_sem = [{"role": "kb", "content": getattr(doc, 'content', '')} for doc in kb_res.docs]
-    return recent + sem + kb_sem
+    try:
+        # recent verbatim
+        recent = client.json().get(key_recent(uid)) or []
+        # semantic recall (chat)
+        vec_bytes = struct.pack('f' * len(embed(query)), *embed(query))
+        res = client.ft("chat:embed").search(
+            Query(f"@user_id:{{{uid}}}=>[KNN {k} @vector $vec AS score]").return_field("content"),
+            query_params={"vec": vec_bytes}
+        )
+        sem = []
+        if hasattr(res, 'docs'):
+            sem = [{"role": "memory", "content": getattr(doc, 'content', '')} for doc in res.docs]
+        # semantic recall (kb)
+        kb_res = client.ft("kb:embed").search(
+            Query(f"*=>[KNN {k} @vector $vec AS score]").return_field("content"),
+            query_params={"vec": vec_bytes}
+        )
+        kb_sem = []
+        if hasattr(kb_res, 'docs'):
+            kb_sem = [{"role": "kb", "content": getattr(doc, 'content', '')} for doc in kb_res.docs]
+        return recent + sem + kb_sem
+    except Exception as e:
+        print(f"Error retrieving context for user {uid}: {e}")
+        # Return at least recent chat on error
+        return client.json().get(key_recent(uid)) or []
 
 # ───────────────────────  CHAT LOOP  ───────────────────────────────────
 def agent(uid: str, user_msg: str):
-    store_chat(uid, "user", user_msg)
-    context = retrieve_context(uid, user_msg)
-    messages: list[BaseMessage] = [SystemMessage(content=str(SYSTEM_PROMPT))]
-    for turn in context:
-        if isinstance(turn, dict) and "content" in turn and "role" in turn:
-            if turn["role"] == "user":
-                messages.append(HumanMessage(content=str(turn["content"])))
-            elif turn["role"] == "assistant":
-                messages.append(AIMessage(content=str(turn["content"])))
-            else:
-                messages.append(HumanMessage(content=f"(memory) {turn['content']}"))
-    messages.append(HumanMessage(content=user_msg))
-    reply = llm(messages).content
-    store_chat(uid, "assistant", str(reply))
-    return reply
+    try:
+        store_chat(uid, "user", user_msg)
+        context = retrieve_context(uid, user_msg)
+        messages: list[BaseMessage] = [SystemMessage(content=str(SYSTEM_PROMPT))]
+        for turn in context:
+            if isinstance(turn, dict) and "content" in turn and "role" in turn:
+                if turn["role"] == "user":
+                    messages.append(HumanMessage(content=str(turn["content"])))
+                elif turn["role"] == "assistant":
+                    messages.append(AIMessage(content=str(turn["content"])))
+                else:
+                    messages.append(HumanMessage(content=f"(memory) {turn['content']}"))
+        messages.append(HumanMessage(content=user_msg))
+        reply = llm(messages).content
+        store_chat(uid, "assistant", str(reply))
+        return reply
+    except Exception as e:
+        error_msg = f"I'm sorry, I encountered an error: {e}"
+        print(f"Error in agent for user {uid}: {e}")
+        try:
+            store_chat(uid, "assistant", error_msg)
+        except:
+            pass  # Don't fail if we can't store the error
+        return error_msg
 
 # ───────────────────────  CLI DEMO  ────────────────────────────────────
 if __name__ == "__main__":
