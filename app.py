@@ -9,14 +9,16 @@ key scheme (2025-07):
 
 import os
 import json
+import struct
 import time
 import uuid
 from dotenv import load_dotenv
 from redis import Redis
+from redis.commands.search.query import Query
 from redisvl.index import SearchIndex
 from redisvl.utils.vectorize import OpenAITextVectorizer
 from langchain_openai import ChatOpenAI
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
+from langchain.schema import AIMessage, HumanMessage, SystemMessage, BaseMessage
 
 # ───────────────────────  ENV & CLIENT  ────────────────────────────────
 load_dotenv()
@@ -64,9 +66,7 @@ def retrieve_context(uid: str, query: str, k: int = 3):
     # recent verbatim
     recent = client.json().get(key_recent(uid)) or []
     # semantic recall (chat)
-    import struct
     vec_bytes = struct.pack('f' * len(embed(query)), *embed(query))
-    from redis.commands.search.query import Query
     res = client.ft("chat:embed").search(
         Query(f"@user_id:{{{uid}}}=>[KNN {k} @vector $vec AS score]").return_field("content"),
         query_params={"vec": vec_bytes}
@@ -88,7 +88,6 @@ def retrieve_context(uid: str, query: str, k: int = 3):
 def agent(uid: str, user_msg: str):
     store_chat(uid, "user", user_msg)
     context = retrieve_context(uid, user_msg)
-    from langchain.schema import BaseMessage
     messages: list[BaseMessage] = [SystemMessage(content=str(SYSTEM_PROMPT))]
     for turn in context:
         if isinstance(turn, dict) and "content" in turn and "role" in turn:

@@ -30,7 +30,7 @@ def extract_text(file_path):
                 text += page.extract_text() or ""
         return text
     else:
-        raise ValueError("Unsupported file type: " + file_path)
+        raise ValueError(f"Unsupported file type: {file_path}")
 
 def seed_kb(file_path, model_name, key_prefix):
     text = extract_text(file_path)
