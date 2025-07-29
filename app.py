@@ -52,7 +52,7 @@ def store_chat(uid: str, role: str, content: str, keep_last: int = 20):
                 "content": content,
                 "user_id": uid,
                 "ts": ts,
-                "vector": embed(content)
+                "vector": json.dumps(embed(content))
             }
         )
 
@@ -60,7 +60,7 @@ def store_chat(uid: str, role: str, content: str, keep_last: int = 20):
 def retrieve_context(uid: str, query: str, k: int = 3):
     # recent verbatim
     recent = client.json().get(key_recent(uid)) or []
-    # semantic recall
+    # semantic recall (chat)
     import struct
     vec_bytes = struct.pack('f' * len(embed(query)), *embed(query))
     from redis.commands.search.query import Query
@@ -68,11 +68,18 @@ def retrieve_context(uid: str, query: str, k: int = 3):
         Query(f"@user_id:{{{uid}}}=>[KNN {k} @vector $vec AS score]").return_field("content"),
         query_params={"vec": vec_bytes}
     )
-    # Handle different result types safely
     sem = []
     if hasattr(res, 'docs'):
         sem = [{"role": "memory", "content": getattr(doc, 'content', '')} for doc in res.docs]
-    return recent + sem
+    # semantic recall (kb)
+    kb_res = client.ft("kb:embed").search(
+        Query(f"*=>[KNN {k} @vector $vec AS score]").return_field("content"),
+        query_params={"vec": vec_bytes}
+    )
+    kb_sem = []
+    if hasattr(kb_res, 'docs'):
+        kb_sem = [{"role": "kb", "content": getattr(doc, 'content', '')} for doc in kb_res.docs]
+    return recent + sem + kb_sem
 
 # ───────────────────────  CHAT LOOP  ───────────────────────────────────
 def agent(uid: str, user_msg: str):
