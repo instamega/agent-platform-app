@@ -7,7 +7,10 @@ key scheme (2025-07):
   agent:config:persona                      – STRING/HASH system prompt
 """
 
-import os, json, time, uuid
+import os
+import json
+import time
+import uuid
 from dotenv import load_dotenv
 from redis import Redis
 from redisvl.index import SearchIndex

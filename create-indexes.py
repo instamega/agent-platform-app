@@ -1,11 +1,9 @@
 import os
-import dotenv
-import redisvl
+import glob
 from redis import Redis
 from dotenv import load_dotenv
 from redisvl.schema import IndexSchema
 from redisvl.index import SearchIndex
-import glob
 
 load_dotenv()
 

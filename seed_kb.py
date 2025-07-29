@@ -1,12 +1,12 @@
 import os
 import json
+import PyPDF2
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OpenAIEmbeddings
 from redis import Redis
-import dotenv
-import PyPDF2
+from dotenv import load_dotenv
 
-dotenv.load_dotenv()
+load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 KB_DATA_PATH = os.getenv("KB_DATA_PATH")
