@@ -54,8 +54,16 @@ class SlackAgent:
         self.socket_client.socket_mode_request_listeners.append(self.handle_message)
         logger.info("Starting Slack bot...")
         try:
+            logger.info("Attempting to connect to Slack Socket Mode...")
             self.socket_client.connect()
             logger.info("Slack bot connected successfully")
+            
+            # Keep the connection alive
+            import time
+            logger.info("Bot is running. Press Ctrl+C to stop.")
+            while True:
+                time.sleep(1)
+                
         except Exception as e:
             logger.error(f"Failed to connect to Slack: {e}")
             raise
@@ -76,9 +84,10 @@ class SlackAgent:
                 logger.info(f"Event type: {event.get('type')}")
                 logger.info(f"Event details: channel={event.get('channel')}, user={event.get('user')}, text='{event.get('text', '')[:50]}...'")
                 
-                # Only handle message events
-                if event.get("type") != "message":
-                    logger.info(f"Ignoring non-message event: {event.get('type')}")
+                # Handle both message and app_mention events
+                event_type = event.get("type")
+                if event_type not in ["message", "app_mention"]:
+                    logger.info(f"Ignoring event type: {event_type}")
                     return
                 
                 # Skip bot messages and message changes
@@ -133,10 +142,16 @@ class SlackAgent:
 
     def _should_respond(self, event, text):
         """Determine if the bot should respond to this message"""
+        event_type = event.get("type")
         channel_type = event.get("channel_type")
         channel = event.get("channel", "")
         
-        logger.info(f"Checking if should respond: channel_type={channel_type}, channel={channel}")
+        logger.info(f"Checking if should respond: event_type={event_type}, channel_type={channel_type}, channel={channel}")
+        
+        # Always respond to app_mention events (these are direct mentions)
+        if event_type == "app_mention":
+            logger.info("Responding to app_mention event")
+            return True
         
         # Always respond to DMs
         if channel_type == "im":
@@ -148,7 +163,7 @@ class SlackAgent:
             logger.info("Responding to DM (channel ID format)")
             return True
         
-        # In channels, only respond if mentioned
+        # In channels, only respond if mentioned (for regular message events)
         mention_pattern = f"<@{self.bot_user_id}>"
         if mention_pattern in text:
             logger.info(f"Responding to mention: {mention_pattern}")
@@ -181,7 +196,23 @@ class SlackAgent:
 def main():
     """Main function to run the Slack bot"""
     try:
+        logger.info("=== Starting Slack Bot Debug Session ===")
         logger.info("Initializing Slack agent...")
+        
+        # Test environment variables
+        slack_bot_token = os.getenv("SLACK_BOT_TOKEN")
+        slack_app_token = os.getenv("SLACK_APP_TOKEN")
+        
+        if slack_bot_token:
+            logger.info(f"SLACK_BOT_TOKEN found: {slack_bot_token[:20]}...")
+        else:
+            logger.error("SLACK_BOT_TOKEN not found!")
+            
+        if slack_app_token:
+            logger.info(f"SLACK_APP_TOKEN found: {slack_app_token[:20]}...")
+        else:
+            logger.error("SLACK_APP_TOKEN not found!")
+        
         slack_agent = SlackAgent()
         slack_agent.start()
     except KeyboardInterrupt:
