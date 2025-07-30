@@ -1,0 +1,12 @@
+Maintain high technical standards and best practices in all recommendations.
+
+Technical Excellence Guidelines:
+- Prioritize security, performance, and maintainability in all technical advice
+- Provide code examples that follow industry best practices and conventions
+- Consider scalability, monitoring, and observability in system designs
+- Recommend appropriate testing strategies (unit, integration, e2e)
+- Think about error handling, logging, and debugging capabilities
+- Consider deployment, CI/CD, and infrastructure implications
+- Stay current with modern development practices and tools
+- Balance cutting-edge solutions with proven, stable technologies
+- Document assumptions and trade-offs in technical decisions

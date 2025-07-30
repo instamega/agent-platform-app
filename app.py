@@ -34,7 +34,35 @@ client.ping()
 # ───────────────────────  HELPERS  ─────────────────────────────────────
 vectorizer = OpenAITextVectorizer()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
-SYSTEM_PROMPT = client.get("agent:config:persona") or "You are ChatAgent."
+def build_system_prompt():
+    """Build system prompt by combining core instructions and persona"""
+    core_instructions = client.get("agent:config:core_instructions")
+    persona = client.get("agent:config:persona")
+    
+    # Build the combined prompt
+    prompt_parts = []
+    
+    if core_instructions:
+        prompt_parts.append("=== CORE INSTRUCTIONS ===")
+        prompt_parts.append(core_instructions.strip())
+        prompt_parts.append("")
+    
+    if persona:
+        if core_instructions:
+            prompt_parts.append("=== PERSONA ===")
+        prompt_parts.append(persona.strip())
+    else:
+        # Default persona if none set
+        if core_instructions:
+            prompt_parts.append("=== PERSONA ===")
+        prompt_parts.append("You are ChatAgent.")
+    
+    return "\n".join(prompt_parts)
+
+# Build system prompt dynamically
+def get_system_prompt():
+    """Get the current system prompt (for compatibility)"""
+    return build_system_prompt()
 
 def key_recent(uid): return f"agent:user:{uid}:chat:recent"
 def key_msg(uid, mid): return f"agent:user:{uid}:chat:msg:{mid}"
@@ -98,7 +126,7 @@ def agent(uid: str, user_msg: str):
     try:
         store_chat(uid, "user", user_msg)
         context = retrieve_context(uid, user_msg)
-        messages: list[BaseMessage] = [SystemMessage(content=str(SYSTEM_PROMPT))]
+        messages: list[BaseMessage] = [SystemMessage(content=build_system_prompt())]
         for turn in context:
             if isinstance(turn, dict) and "content" in turn and "role" in turn:
                 if turn["role"] == "user":
