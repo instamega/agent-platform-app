@@ -67,7 +67,22 @@ The system uses a Redis-based key scheme:
    ```bash
    python seed_kb.py
    ```
-   This will process all PDF and Markdown files in the `kb_seed_data/` directory.
+   This will process all PDF and Markdown files in the `kb_seed_data/` directory using enhanced chunking strategies.
+   
+   **Advanced Knowledge Base Processing:**
+   ```bash
+   # Use enhanced seeder with custom options
+   python seed_kb_enhanced.py ./kb_seed_data --strategy semantic --chunk-size 1500
+   
+   # List available chunking strategies
+   python seed_kb_enhanced.py --list-strategies
+   
+   # Process single file with specific strategy
+   python seed_kb_enhanced.py document.pdf --strategy markdown
+   
+   # Clear existing knowledge base first
+   python seed_kb_enhanced.py ./kb_seed_data --clear
+   ```
 
 3. **Set system prompt** (optional)
    ```bash
@@ -178,7 +193,10 @@ print(response)
 ├── persona_manager.py    # Persona and core instruction management tool
 ├── slack_debug.py        # Slack connection diagnostics
 ├── create-indexes.py      # Sets up Redis search indexes
-├── seed_kb.py            # Knowledge base document ingestion
+├── seed_kb.py            # Knowledge base seeder (backward compatible)
+├── seed_kb_enhanced.py   # Enhanced knowledge base seeder with advanced chunking
+├── chunking_strategies.py # Multiple chunking strategy implementations
+├── document_processor.py # Enhanced document extraction with PDF improvements
 ├── requirements.txt      # Python dependencies
 ├── personas/             # Persona preset files
 │   ├── helpful_assistant.txt
@@ -208,12 +226,45 @@ print(response)
 ### Memory Settings
 - Recent chat history: Last 20 turns (configurable in `store_chat`)
 - Semantic search: Top 3 similar conversations and knowledge base chunks
-- Chunk size: 800 characters with 100 character overlap
+- Default chunk size: 1200 characters with 200 character overlap (enhanced from 800/100)
+
+### Knowledge Base Chunking Strategies
+
+The system supports multiple chunking strategies for optimal document processing:
+
+**Available Strategies:**
+- **`auto`** - Automatically selects best strategy based on file type
+- **`recursive`** - Enhanced recursive character splitting with better defaults (1200 chars, 200 overlap)
+- **`semantic`** - Semantic chunking respecting paragraph and sentence boundaries
+- **`markdown`** - Markdown-aware chunking preserving headers and document structure
+- **`sliding_window`** - Sliding window approach with configurable overlap
+
+**Strategy Selection:**
+- **PDF files**: Default to `semantic` chunking for better context preservation
+- **Markdown files**: Default to `markdown` chunking to preserve structure
+- **Text files**: Default to `recursive` chunking with improved parameters
+
+**Configuration Options:**
+```bash
+# Environment variables for chunking
+export CHUNKING_STRATEGY=semantic
+export EMBEDDING_MODEL=text-embedding-ada-002
+
+# Custom chunk sizes
+python seed_kb_enhanced.py ./docs --chunk-size 1500 --chunk-overlap 300
+```
+
+### Enhanced Document Processing
+- **PDF Extraction**: Supports pdfplumber, PyMuPDF, or PyPDF2 (automatic fallback)
+- **Metadata Preservation**: Stores document title, author, page numbers, section headers
+- **Structure Awareness**: Maintains document hierarchy and formatting context
+- **Error Recovery**: Graceful fallback between extraction methods
 
 ### Customization
-- Modify `SYSTEM_PROMPT` in Redis or directly in `app.py`
-- Adjust embedding model in `seed_kb.py` (default: `text-embedding-ada-002`)
+- Modify core instructions and personas using `persona_manager.py`
+- Adjust embedding model in environment variables (default: `text-embedding-ada-002`)
 - Configure LLM model in `app.py` (default: `gpt-4o-mini`)
+- Customize chunking parameters per document type
 
 ## Troubleshooting
 
