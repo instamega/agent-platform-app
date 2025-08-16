@@ -19,6 +19,7 @@ from redisvl.index import SearchIndex
 from redisvl.utils.vectorize import OpenAITextVectorizer
 from langchain_openai import ChatOpenAI
 from langchain.schema import AIMessage, HumanMessage, SystemMessage, BaseMessage
+from memory_graph import MemoryGraphManager
 
 # ───────────────────────  ENV & CLIENT  ────────────────────────────────
 load_dotenv()
@@ -34,6 +35,7 @@ client.ping()
 # ───────────────────────  HELPERS  ─────────────────────────────────────
 vectorizer = OpenAITextVectorizer()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.4)
+memory_graph = MemoryGraphManager(client)
 def build_system_prompt():
     """Build system prompt by combining core instructions and persona"""
     core_instructions = client.get("agent:config:core_instructions")
@@ -94,6 +96,29 @@ def store_chat(uid: str, role: str, content: str, keep_last: int = 20):
         raise
 
 # ───────────────────────  CONTEXT RETRIEVAL  ──────────────────────────
+async def retrieve_memory_context(query: str, k: int = 3) -> List[Dict[str, str]]:
+    """Retrieve relevant entities and relations from memory graph"""
+    try:
+        search_results = await memory_graph.search_nodes(query)
+        memory_context = []
+        
+        # Add entity information
+        for entity in search_results.get("entities", []):
+            context_text = f"Entity: {entity['name']} ({entity['entityType']})"
+            if entity.get("observations"):
+                context_text += f" - {'; '.join(entity['observations'][:3])}"  # Limit observations
+            memory_context.append({"role": "memory_graph", "content": context_text})
+        
+        # Add relationship information
+        for relation in search_results.get("relations", []):
+            context_text = f"Relationship: {relation['from']} --[{relation['relationType']}]--> {relation['to']}"
+            memory_context.append({"role": "memory_graph", "content": context_text})
+        
+        return memory_context[:k]  # Limit results
+    except Exception as e:
+        print(f"Error retrieving memory context: {e}")
+        return []
+
 def retrieve_context(uid: str, query: str, k: int = 3):
     try:
         # recent verbatim
@@ -115,7 +140,16 @@ def retrieve_context(uid: str, query: str, k: int = 3):
         kb_sem = []
         if hasattr(kb_res, 'docs'):
             kb_sem = [{"role": "kb", "content": getattr(doc, 'content', '')} for doc in kb_res.docs]
-        return recent + sem + kb_sem
+        
+        # Add memory graph context
+        import asyncio
+        try:
+            memory_context = asyncio.run(retrieve_memory_context(query, k))
+        except Exception as e:
+            print(f"Warning: Could not retrieve memory context: {e}")
+            memory_context = []
+        
+        return recent + sem + kb_sem + memory_context
     except Exception as e:
         print(f"Error retrieving context for user {uid}: {e}")
         # Return at least recent chat on error

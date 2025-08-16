@@ -1,22 +1,37 @@
 # Agent Platform MVP
 
-A conversational AI agent platform built with Redis Stack that provides chat functionality with persistent memory and knowledge base integration.
+A conversational AI agent platform built with Redis Stack that provides chat functionality with persistent memory, knowledge graph capabilities, and knowledge base integration.
 
 ## Features
 
 - **Conversational Chat**: Interactive chat interface with OpenAI GPT-4o-mini
 - **Persistent Memory**: Stores chat history with semantic search for context retrieval
+- **Knowledge Graph Memory**: Track entities, relationships, and observations across conversations
 - **Knowledge Base**: Ingest PDF and Markdown documents for contextual responses
 - **Vector Search**: Uses OpenAI embeddings for semantic similarity matching
+- **Memory Management**: Full CLI interface for managing entities and relationships
 - **Redis Stack Backend**: Leverages Redis for both structured data and vector search capabilities
 
 ## Architecture
 
 The system uses a Redis-based key scheme:
+
+**Chat & History:**
 - `agent:user:{uid}:chat:recent` - JSON array of last N conversation turns
 - `agent:user:{uid}:chat:msg:{msg_id}` - HASH for each embedded chat chunk  
+
+**Knowledge Base:**
 - `agent:kb:doc:{doc_id}:{chunk_id}` - HASH for each embedded knowledge base chunk
+
+**Memory Graph:**
+- `agent:memory:entity:{name}` - HASH for each entity with type and observations
+- `agent:memory:relations:{from}:{to}` - SET of relation types between entities
+- `agent:memory:entities_by_type:{type}` - SET of entity names by type
+- `agent:memory:all_entities` - SET of all entity names
+
+**Configuration:**
 - `agent:config:persona` - System prompt configuration
+- `agent:config:core_instructions` - Core behavioral instructions
 
 ## Prerequisites
 
@@ -100,6 +115,7 @@ This starts an interactive chat session where you can:
 - Ask questions and receive contextual responses
 - Have the agent remember previous conversations
 - Get answers based on the knowledge base documents
+- Leverage knowledge graph memory for entity and relationship awareness
 
 ### Slack Bot Integration
 ```bash
@@ -176,23 +192,82 @@ The agent combines core instructions and persona into a structured system prompt
 [Specific role and personality traits]
 ```
 
+### Memory Graph Management
+```bash
+python memory_manager.py <command> [options]
+```
+
+Manage entities, relationships, and observations in the knowledge graph:
+
+**Entity Commands:**
+- `create-entity --name "Name" --type "type" --observations "obs1" "obs2"` - Create entity
+- `delete-entities "name1" "name2"` - Delete entities and their relations
+- `get "name1" "name2"` - Retrieve specific entities
+- `add-observations --entity "name" --observations "new obs1" "new obs2"` - Add observations
+
+**Relationship Commands:**
+- `create-relation --from "entity1" --to "entity2" --type "relation_type"` - Create relation
+- `delete-relation --from "entity1" --to "entity2" --type "relation_type"` - Delete relation
+
+**Search & Management:**
+- `search "query"` - Search entities and relations by content
+- `stats` - Show memory graph statistics
+- `export filename.json` - Export entire memory graph
+- `import filename.json [--clear]` - Import memory graph
+- `clear [--confirm]` - Clear all memory data
+
+**Examples:**
+```bash
+# Create entities
+python memory_manager.py create-entity --name "Alice" --type "person" --observations "engineer" "Python expert"
+python memory_manager.py create-entity --name "TechCorp" --type "company" --observations "startup" "AI focus"
+
+# Create relationships
+python memory_manager.py create-relation --from "Alice" --to "TechCorp" --type "works_at"
+
+# Search and explore
+python memory_manager.py search "tech"
+python memory_manager.py get "Alice" "TechCorp"
+python memory_manager.py stats
+
+# Backup and restore
+python memory_manager.py export my_memory.json
+python memory_manager.py import my_memory.json --clear
+```
+
 ### Programmatic Usage
 ```python
-from app import agent
+from app import agent, memory_graph
+import asyncio
 
 # Start a conversation
 response = agent(uid="user123", user_msg="Hello, how can you help me?")
 print(response)
+
+# Access memory graph directly
+async def manage_memory():
+    # Create entities
+    entities = [{"name": "Alice", "entityType": "person", "observations": ["engineer"]}]
+    await memory_graph.create_entities(entities)
+    
+    # Search memory
+    results = await memory_graph.search_nodes("Alice")
+    print(results)
+
+asyncio.run(manage_memory())
 ```
 
 ## Project Structure
 
 ```
-├── app.py                 # Main chat agent application
+├── app.py                 # Main chat agent application with memory integration
+├── memory_graph.py        # Knowledge graph manager for entity/relationship storage
+├── memory_manager.py      # CLI tool for memory graph management
+├── example_memory_usage.py # Demonstration of memory-enhanced agent
 ├── slack_bot.py          # Slack bot integration
 ├── persona_manager.py    # Persona and core instruction management tool
 ├── slack_debug.py        # Slack connection diagnostics
-├── create-indexes.py      # Sets up Redis search indexes
+├── create-indexes.py     # Sets up Redis search indexes
 ├── seed_kb.py            # Knowledge base seeder (backward compatible)
 ├── seed_kb_enhanced.py   # Enhanced knowledge base seeder with advanced chunking
 ├── chunking_strategies.py # Multiple chunking strategy implementations
@@ -216,17 +291,27 @@ print(response)
 
 ## Key Functions
 
+**Core Agent Functions:**
 - `agent(uid, user_msg)`: Main chat function that processes user input and returns AI response
 - `store_chat(uid, role, content)`: Stores conversation turns with embeddings
-- `retrieve_context(uid, query)`: Retrieves relevant context from chat history and knowledge base
+- `retrieve_context(uid, query)`: Retrieves relevant context from chat history, knowledge base, and memory graph
 - `seed_kb(file_path, model_name, key_prefix)`: Processes and stores knowledge base documents
+
+**Memory Graph Functions:**
+- `memory_graph.create_entities(entities)`: Create entities with types and observations
+- `memory_graph.create_relations(relations)`: Create typed relationships between entities
+- `memory_graph.search_nodes(query)`: Search entities and relations by content
+- `memory_graph.add_observations(observations)`: Add new observations to existing entities
+- `memory_graph.read_graph()`: Retrieve entire knowledge graph
+- `memory_graph.get_memory_stats()`: Get comprehensive memory statistics
 
 ## Configuration
 
 ### Memory Settings
-- Recent chat history: Last 20 turns (configurable in `store_chat`)
-- Semantic search: Top 3 similar conversations and knowledge base chunks
-- Default chunk size: 1200 characters with 200 character overlap (enhanced from 800/100)
+- **Chat History**: Last 20 turns (configurable in `store_chat`)
+- **Semantic Search**: Top 3 similar conversations and knowledge base chunks
+- **Memory Graph Context**: Top 3 relevant entities and relationships per query
+- **Chunk Size**: Default 1200 characters with 200 character overlap (enhanced from 800/100)
 
 ### Knowledge Base Chunking Strategies
 
@@ -261,10 +346,12 @@ python seed_kb_enhanced.py ./docs --chunk-size 1500 --chunk-overlap 300
 - **Error Recovery**: Graceful fallback between extraction methods
 
 ### Customization
-- Modify core instructions and personas using `persona_manager.py`
-- Adjust embedding model in environment variables (default: `text-embedding-ada-002`)
-- Configure LLM model in `app.py` (default: `gpt-4o-mini`)
-- Customize chunking parameters per document type
+- **Personas & Instructions**: Modify using `persona_manager.py`
+- **Memory Management**: Use `memory_manager.py` for entity and relationship management
+- **Models**: Adjust embedding model in environment variables (default: `text-embedding-ada-002`)
+- **LLM Configuration**: Configure model in `app.py` (default: `gpt-4o-mini`)
+- **Chunking**: Customize parameters per document type
+- **Memory Integration**: Control memory context retrieval in `retrieve_memory_context()`
 
 ## Troubleshooting
 
@@ -272,6 +359,9 @@ python seed_kb_enhanced.py ./docs --chunk-size 1500 --chunk-overlap 300
 - **OpenAI API errors**: Check your API key and rate limits
 - **Missing indexes**: Run `python create-indexes.py` to recreate search indexes
 - **Empty responses**: Ensure knowledge base is seeded with `python seed_kb.py`
+- **Memory not working**: Check memory graph stats with `python memory_manager.py stats`
+- **Entity creation fails**: Verify Redis connection and check for duplicate entity names
+- **Memory context not appearing**: Ensure entities/relations exist and match query terms
 
 ## Contributing
 
