@@ -1,0 +1,101 @@
+name: Question / Support
+description: Ask a question or get help with setup/usage
+title: "[Question]: "
+labels: ["question", "needs-triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your question! Please provide as much context as possible so we can help you effectively.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: "I'm trying to understand how to..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: What area is your question about?
+      options:
+        - Setup and Installation
+        - Configuration
+        - Knowledge Base and Document Processing
+        - Memory Graph and Entity Management
+        - Slack Integration
+        - Persona and Core Instructions
+        - API Usage and Integration
+        - Performance and Optimization
+        - Troubleshooting
+        - General Usage
+        - Architecture and Design
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide context about what you're trying to achieve
+      placeholder: "I'm working on... and I want to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What Have You Tried?
+      description: What approaches have you already attempted?
+      placeholder: "I've tried... but..."
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: Information about your setup
+      placeholder: |
+        - OS: [e.g. macOS 13.0, Ubuntu 22.04, Windows 11]
+        - Python version: [e.g. 3.9.0]
+        - Redis version: [e.g. 7.0.0]
+        - Installation method: [e.g. pip, docker, etc.]
+
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected Outcome
+      description: What result are you hoping to achieve?
+      placeholder: "I expect to be able to..."
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Information
+      description: Any logs, error messages, or other relevant details
+      placeholder: "Additional context, logs, or examples..."
+
+  - type: checkboxes
+    id: documentation
+    attributes:
+      label: Documentation
+      options:
+        - label: I have read the README.md
+        - label: I have searched existing issues and discussions
+        - label: I have checked the code examples in the repository
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have provided enough context for others to understand my question
+          required: true
+        - label: This is not a bug report (I would use the bug template instead)
+          required: true

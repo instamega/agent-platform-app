@@ -363,6 +363,12 @@ python seed_kb_enhanced.py ./docs --chunk-size 1500 --chunk-overlap 300
 - **Entity creation fails**: Verify Redis connection and check for duplicate entity names
 - **Memory context not appearing**: Ensure entities/relations exist and match query terms
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## Contributing
 
 This is an MVP designed as a foundation for building more sophisticated agent platforms. Feel free to extend and customize based on your needs.
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
