@@ -368,14 +368,51 @@ class MemoryGraphManager:
             total_relations += self.redis.scard(key)
         return total_relations
     
+    def get_all_entities(self) -> List[Dict[str, Any]]:
+        """Get all entities with their details"""
+        all_entity_names = self.redis.smembers("agent:memory:all_entities") or []
+        entities = []
+        
+        for entity_name in all_entity_names:
+            entity_key = self._entity_key(entity_name)
+            entity_data = self.redis.hgetall(entity_key)
+            
+            if entity_data:
+                entities.append({
+                    "name": entity_name,
+                    "entityType": entity_data.get("entityType", "unknown"),
+                    "observations": self._deserialize_observations(entity_data.get("observations", "[]"))
+                })
+        
+        return entities
+
     def get_memory_stats(self) -> Dict[str, Any]:
         """Get comprehensive memory statistics"""
+        entity_types = self.get_all_entity_types()
         return {
             "entity_count": self.get_entity_count(),
             "relation_count": self.get_relation_count(),
-            "entity_types": self.get_all_entity_types(),
+            "entity_types": entity_types,
             "entities_by_type": {
                 entity_type: len(self.get_entity_by_type(entity_type))
-                for entity_type in self.get_all_entity_types()
-            }
+                for entity_type in entity_types
+            },
+            "avg_observations_per_entity": self._calculate_avg_observations()
         }
+    
+    def _calculate_avg_observations(self) -> float:
+        """Calculate average observations per entity"""
+        entity_count = self.get_entity_count()
+        if entity_count == 0:
+            return 0.0
+        
+        total_observations = 0
+        all_entity_names = self.redis.smembers("agent:memory:all_entities") or []
+        
+        for entity_name in all_entity_names:
+            entity_key = self._entity_key(entity_name)
+            observations_str = self.redis.hget(entity_key, "observations") or "[]"
+            observations = self._deserialize_observations(observations_str)
+            total_observations += len(observations)
+        
+        return total_observations / entity_count

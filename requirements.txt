@@ -6,6 +6,7 @@ langchain-openai
 langchain-community
 PyPDF2
 nltk
+flask>=2.3.0
 # Optional enhanced PDF processing (install one of these for better quality)
 # pdfplumber>=0.9.0  # Recommended for best PDF extraction
 # pymupdf>=1.23.0    # Alternative PDF processor 

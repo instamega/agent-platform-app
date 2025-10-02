@@ -11,6 +11,7 @@ A conversational AI agent platform built with Redis Stack that provides chat fun
 - **Vector Search**: Uses OpenAI embeddings for semantic similarity matching
 - **Memory Management**: Full CLI interface for managing entities and relationships
 - **Redis Stack Backend**: Leverages Redis for both structured data and vector search capabilities
+- **Web Admin Panel**: Complete web-based GUI for system management and monitoring
 
 ## Architecture
 
@@ -105,6 +106,26 @@ The system uses a Redis-based key scheme:
    ```
 
 ## Usage
+
+### Web Admin Panel
+```bash
+python start_admin.py
+```
+
+Launch the comprehensive web-based admin interface at http://localhost:5000
+
+**Admin Panel Features:**
+- **Dashboard**: System overview with real-time statistics and health monitoring
+- **Persona Management**: Configure agent personality and core instructions via web interface
+- **Memory Graph**: Visual management of entities and relationships with search capabilities
+- **Conversation History**: Browse and analyze user interactions with detailed message views
+- **Knowledge Base**: View and manage ingested documents and chunks
+- **System Configuration**: Monitor Redis health, environment variables, and system status
+
+**Optional Arguments:**
+```bash
+python start_admin.py --host 0.0.0.0 --port 8080 --debug
+```
 
 ### Command Line Interface
 ```bash
@@ -261,6 +282,8 @@ asyncio.run(manage_memory())
 
 ```
 ├── app.py                 # Main chat agent application with memory integration
+├── admin_panel.py         # Web-based admin interface (Flask application)
+├── start_admin.py         # Admin panel startup script with dependency checks
 ├── memory_graph.py        # Knowledge graph manager for entity/relationship storage
 ├── memory_manager.py      # CLI tool for memory graph management
 ├── example_memory_usage.py # Demonstration of memory-enhanced agent
@@ -284,6 +307,19 @@ asyncio.run(manage_memory())
 ├── schemas/              # Redis index schema definitions
 │   ├── agent-kb-schema.yaml
 │   └── history-schema.yaml
+├── templates/            # HTML templates for admin panel
+│   ├── base.html
+│   ├── dashboard.html
+│   ├── personas.html
+│   ├── memory.html
+│   ├── conversations.html
+│   ├── knowledge.html
+│   └── system.html
+├── static/               # Static assets for admin panel
+│   ├── css/
+│   │   └── admin.css     # Custom admin panel styles
+│   └── js/
+│       └── admin.js      # Admin panel JavaScript functionality
 └── kb_seed_data/         # Sample knowledge base documents
     ├── *.pdf
     └── *.md
