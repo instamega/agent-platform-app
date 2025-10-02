@@ -1,6 +1,6 @@
 # Agent Platform MVP
 
-A conversational AI agent platform built with Redis Stack that provides chat functionality with persistent memory, knowledge graph capabilities, and knowledge base integration.
+A conversational AI agent platform with decoupled storage architecture that provides chat functionality with persistent memory, knowledge graph capabilities, and knowledge base integration.
 
 ## Features
 
@@ -10,11 +10,24 @@ A conversational AI agent platform built with Redis Stack that provides chat fun
 - **Knowledge Base**: Ingest PDF and Markdown documents for contextual responses
 - **Vector Search**: Uses OpenAI embeddings for semantic similarity matching
 - **Memory Management**: Full CLI interface for managing entities and relationships
-- **Redis Stack Backend**: Leverages Redis for both structured data and vector search capabilities
+- **Decoupled Storage**: FastAPI storage abstraction service supporting multiple backends
+- **Multi-Backend Support**: PostgreSQL/pgvector, Neo4j, and Redis backends
+- **Web Admin Panel**: Complete web-based GUI for system management and monitoring
 
 ## Architecture
 
-The system uses a Redis-based key scheme:
+The system uses a **decoupled storage architecture** with a FastAPI storage abstraction service:
+
+### Storage Abstraction Layer
+The platform now uses a dedicated **Storage Abstraction API** (`/storage-abstraction-api/`) that provides:
+- **Vector Storage**: PostgreSQL with pgvector extension for embeddings and semantic search
+- **Chat Storage**: PostgreSQL for conversation history and message threading
+- **Graph Storage**: Neo4j for entity relationships and knowledge graph
+- **Multi-tenant Support**: Tenant isolation via HTTP headers
+- **RESTful API**: Versioned `/v1` endpoints with full authentication
+
+### Legacy Redis Schema (Backward Compatibility)
+For existing integrations, the system maintains support for Redis-based storage:
 
 **Chat & History:**
 - `agent:user:{uid}:chat:recent` - JSON array of last N conversation turns
@@ -36,8 +49,13 @@ The system uses a Redis-based key scheme:
 ## Prerequisites
 
 - Python 3.8+
-- Redis Stack (with vector search capabilities)
+- Docker and Docker Compose (recommended for storage services)
 - OpenAI API key
+
+### Storage Backend Options
+- **PostgreSQL with pgvector** (recommended for production)
+- **Neo4j** (for graph storage)  
+- **Redis Stack** (legacy support, with vector search capabilities)
 
 ## Installation
 
@@ -56,13 +74,31 @@ The system uses a Redis-based key scheme:
    Create a `.env` file with:
    ```
    OPENAI_API_KEY=your_openai_api_key_here
+   
+   # Storage Abstraction API (recommended)
+   STORAGE_API_URL=http://localhost:8080
+   STORAGE_API_TOKEN=changeme
+   STORAGE_TENANT=default
+   
+   # Legacy Redis Support (optional)
    REDIS_HOST=localhost
    REDIS_PORT=6379
    REDIS_PASSWORD=your_redis_password_if_needed
+   
    KB_DATA_PATH=./kb_seed_data
    ```
 
-4. **Start Redis Stack**
+4. **Start Storage Services**
+   
+   **Option A: Storage Abstraction API (Recommended)**
+   ```bash
+   # Start the decoupled storage services
+   cd storage-abstraction-api
+   make up
+   ```
+   This starts PostgreSQL, Neo4j, and the FastAPI storage service.
+   
+   **Option B: Redis Stack (Legacy)**
    ```bash
    # Using Docker
    docker run -d --name redis-stack -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
@@ -284,6 +320,36 @@ asyncio.run(manage_memory())
 ├── schemas/              # Redis index schema definitions
 │   ├── agent-kb-schema.yaml
 │   └── history-schema.yaml
+├── templates/            # HTML templates for admin panel
+│   ├── base.html
+│   ├── dashboard.html
+│   ├── personas.html
+│   ├── memory.html
+│   ├── conversations.html
+│   ├── knowledge.html
+│   └── system.html
+├── static/               # Static assets for admin panel
+│   ├── css/
+│   │   └── admin.css     # Custom admin panel styles
+│   └── js/
+│       └── admin.js      # Admin panel JavaScript functionality
+├── storage-abstraction-api/ # FastAPI storage abstraction service
+│   ├── src/app/          # Main application code
+│   │   ├── adapters/     # Storage backend implementations
+│   │   │   ├── vector/   # Vector storage adapters (pgvector, redis)
+│   │   │   ├── chat/     # Chat storage adapters (postgres, redis)
+│   │   │   └── graph/    # Graph storage adapters (neo4j)
+│   │   ├── ports/        # Domain interfaces
+│   │   ├── routers/      # FastAPI endpoints
+│   │   ├── schema/       # Pydantic models
+│   │   └── main.py       # FastAPI application
+│   ├── docker/           # Docker configuration
+│   │   ├── Dockerfile
+│   │   └── docker-compose.yml
+│   ├── client/py/        # Python client SDK
+│   │   └── storage_client.py
+│   ├── test_script.py    # Comprehensive API tests
+│   └── README.md         # Storage API documentation
 └── kb_seed_data/         # Sample knowledge base documents
     ├── *.pdf
     └── *.md
@@ -355,13 +421,29 @@ python seed_kb_enhanced.py ./docs --chunk-size 1500 --chunk-overlap 300
 
 ## Troubleshooting
 
+### Storage Abstraction API Issues
+- **Storage API not responding**: Check if services are running with `docker-compose ps` in `storage-abstraction-api/docker/`
+- **Database connection errors**: Verify PostgreSQL and Neo4j containers are healthy
+- **Authentication errors**: Ensure `Authorization: Bearer changeme` header is included in requests
+- **API tests failing**: Run `python test_script.py` in the storage-abstraction-api directory
+
+### Legacy Redis Issues
 - **Redis connection issues**: Verify Redis Stack is running and connection details in `.env`
-- **OpenAI API errors**: Check your API key and rate limits
 - **Missing indexes**: Run `python create-indexes.py` to recreate search indexes
+
+### General Issues
+- **OpenAI API errors**: Check your API key and rate limits
 - **Empty responses**: Ensure knowledge base is seeded with `python seed_kb.py`
 - **Memory not working**: Check memory graph stats with `python memory_manager.py stats`
-- **Entity creation fails**: Verify Redis connection and check for duplicate entity names
+- **Entity creation fails**: Verify storage backend connection and check for duplicate entity names
 - **Memory context not appearing**: Ensure entities/relations exist and match query terms
+
+### Migration from Redis to Storage API
+If migrating from Redis to the new storage abstraction:
+1. Export data from Redis using existing tools
+2. Start the storage abstraction services
+3. Update application code to use the storage client SDK
+4. Import data through the new API endpoints
 
 ## License
 
