@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Memory Graph - Agent Platform Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-project-diagram"></i> Memory Graph Management</h1>
+        <p class="text-muted">Manage entities, relationships, and knowledge graph data</p>
+    </div>
+</div>
+
+{% if stats %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="text-primary">{{ stats.entity_count }}</h2>
+                <p class="mb-0">Total Entities</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="text-success">{{ stats.relation_count }}</h2>
+                <p class="mb-0">Total Relations</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="text-info">{{ stats.entity_types|length }}</h2>
+                <p class="mb-0">Entity Types</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="text-warning">{{ stats.avg_observations_per_entity|round(1) }}</h2>
+                <p class="mb-0">Avg Observations</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-plus"></i> Create Entity</h5>
+            </div>
+            <div class="card-body">
+                <form id="createEntityForm">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="entityName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        <input type="text" class="form-control" id="entityType" placeholder="person, company, concept, etc." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observations</label>
+                        <textarea class="form-control" id="entityObservations" rows="3" placeholder="One observation per line"></textarea>
+                        <small class="text-muted">Enter each observation on a new line</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-plus"></i> Create Entity
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-link"></i> Create Relationship</h5>
+            </div>
+            <div class="card-body">
+                <form id="createRelationForm">
+                    <div class="mb-3">
+                        <label class="form-label">From Entity</label>
+                        <input type="text" class="form-control" id="relationFrom" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">To Entity</label>
+                        <input type="text" class="form-control" id="relationTo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Relationship Type</label>
+                        <input type="text" class="form-control" id="relationType" placeholder="works_at, knows, related_to, etc." required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-link"></i> Create Relationship
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-search"></i> Search Memory</h5>
+                <div>
+                    <button class="btn btn-outline-secondary" onclick="loadAllEntities()">
+                        <i class="fas fa-list"></i> Show All
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="searchQuery" placeholder="Search entities and relationships...">
+                        <button class="btn btn-outline-primary" onclick="searchMemory()">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="memoryResults">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-search fa-2x mb-3"></i>
+                        <p>Enter a search query or click "Show All" to view entities</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if stats and stats.entity_types %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Entity Type Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for entity_type, count in stats.entity_types.items() %}
+                    <div class="col-md-2 text-center mb-3">
+                        <div class="border rounded p-3">
+                            <h4 class="text-primary">{{ count }}</h4>
+                            <small class="text-muted">{{ entity_type.title() }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div id="alertContainer"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAlert(message, type = 'success') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show mt-3">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.getElementById('alertContainer').innerHTML = alertHtml;
+}
+
+document.getElementById('createEntityForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('entityName').value;
+    const type = document.getElementById('entityType').value;
+    const observationsText = document.getElementById('entityObservations').value;
+    const observations = observationsText.split('\n').filter(obs => obs.trim().length > 0);
+    
+    fetch('/memory/entity/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: name,
+            type: type,
+            observations: observations
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showAlert(data.message, data.success ? 'success' : 'danger');
+        if (data.success) {
+            document.getElementById('createEntityForm').reset();
+        }
+    });
+});
+
+document.getElementById('createRelationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const from = document.getElementById('relationFrom').value;
+    const to = document.getElementById('relationTo').value;
+    const type = document.getElementById('relationType').value;
+    
+    fetch('/memory/relation/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            from: from,
+            to: to,
+            type: type
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        showAlert(data.message, data.success ? 'success' : 'danger');
+        if (data.success) {
+            document.getElementById('createRelationForm').reset();
+        }
+    });
+});
+
+document.getElementById('searchQuery').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchMemory();
+    }
+});
+
+function searchMemory() {
+    const query = document.getElementById('searchQuery').value.trim();
+    if (!query) {
+        showAlert('Please enter a search query', 'warning');
+        return;
+    }
+    
+    fetch(`/memory/search?q=${encodeURIComponent(query)}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayResults(data.results);
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    });
+}
+
+function loadAllEntities() {
+    fetch('/memory/entities')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayResults({entities: data.entities, relations: []});
+        } else {
+            showAlert(data.message, 'danger');
+        }
+    });
+}
+
+function displayResults(results) {
+    const container = document.getElementById('memoryResults');
+    let html = '';
+    
+    if (results.entities && results.entities.length > 0) {
+        html += '<h6><i class="fas fa-users"></i> Entities</h6>';
+        html += '<div class="row mb-4">';
+        
+        results.entities.forEach(entity => {
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-user"></i> ${entity.name}
+                                <span class="badge bg-primary ms-2">${entity.entityType}</span>
+                            </h6>
+                            ${entity.observations && entity.observations.length > 0 ? `
+                                <div class="mt-2">
+                                    <small class="text-muted">Observations:</small>
+                                    <ul class="small mt-1 mb-0">
+                                        ${entity.observations.map(obs => `<li>${obs}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    if (results.relations && results.relations.length > 0) {
+        html += '<h6><i class="fas fa-link"></i> Relationships</h6>';
+        html += '<div class="list-group">';
+        
+        results.relations.forEach(relation => {
+            html += `
+                <div class="list-group-item">
+                    <strong>${relation.from}</strong> 
+                    <span class="badge bg-success mx-2">${relation.relationType}</span>
+                    <strong>${relation.to}</strong>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    if (!html) {
+        html = `
+            <div class="text-center text-muted">
+                <i class="fas fa-search fa-2x mb-3"></i>
+                <p>No results found</p>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+</script>
+{% endblock %}

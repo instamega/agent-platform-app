@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation: {{ user_id }} - Agent Platform Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1><i class="fas fa-comment"></i> Conversation Details</h1>
+                <p class="text-muted mb-0">User ID: <code>{{ user_id }}</code></p>
+            </div>
+            <div>
+                <a href="{{ url_for('conversations') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Conversations
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-messages"></i> Message History</h5>
+                <div>
+                    <span class="badge bg-primary">{{ messages|length }} messages</span>
+                </div>
+            </div>
+            <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                {% if messages %}
+                <div class="conversation-container">
+                    {% for message in messages %}
+                    <div class="message-item mb-3 {% if message.role == 'user' %}user-message{% else %}assistant-message{% endif %}">
+                        <div class="d-flex align-items-start">
+                            <div class="message-avatar me-3">
+                                {% if message.role == 'user' %}
+                                <i class="fas fa-user bg-primary text-white rounded-circle p-2"></i>
+                                {% else %}
+                                <i class="fas fa-robot bg-success text-white rounded-circle p-2"></i>
+                                {% endif %}
+                            </div>
+                            <div class="message-content flex-grow-1">
+                                <div class="message-header d-flex justify-content-between align-items-center mb-2">
+                                    <strong class="{% if message.role == 'user' %}text-primary{% else %}text-success{% endif %}">
+                                        {% if message.role == 'user' %}User{% else %}Assistant{% endif %}
+                                    </strong>
+                                    <small class="text-muted">{{ message.timestamp }}</small>
+                                </div>
+                                <div class="message-text p-3 rounded {% if message.role == 'user' %}bg-primary bg-opacity-10{% else %}bg-success bg-opacity-10{% endif %}">
+                                    <pre style="white-space: pre-wrap; margin: 0; font-family: inherit;">{{ message.content }}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-comment-slash fa-3x mb-3"></i>
+                    <h5>No Messages Found</h5>
+                    <p>This conversation has no recorded messages.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4 class="text-primary">{{ messages|length }}</h4>
+                <p class="mb-0">Total Messages</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4 class="text-info">{{ messages|selectattr("role", "equalto", "user")|list|length }}</h4>
+                <p class="mb-0">User Messages</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4 class="text-success">{{ messages|selectattr("role", "equalto", "assistant")|list|length }}</h4>
+                <p class="mb-0">Assistant Messages</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <h4 class="text-warning">{{ messages[0].timestamp if messages else 'N/A' }}</h4>
+                <p class="mb-0">First Message</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.conversation-container {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.message-item {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1rem;
+}
+
+.message-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.message-avatar i {
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.message-text {
+    border: 1px solid rgba(0,0,0,0.1);
+    line-height: 1.5;
+}
+
+.user-message .message-text {
+    border-left: 4px solid #0d6efd;
+}
+
+.assistant-message .message-text {
+    border-left: 4px solid #198754;
+}
+
+pre {
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.card-body {
+    scrollbar-width: thin;
+    scrollbar-color: #ccc #f8f9fa;
+}
+
+.card-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.card-body::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+
+.card-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.card-body::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+</style>
+
+<script>
+// Auto-scroll to bottom of conversation
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.querySelector('.card-body');
+    if (container && container.scrollHeight > container.clientHeight) {
+        container.scrollTop = container.scrollHeight;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}System Configuration - Agent Platform Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-cog"></i> System Configuration</h1>
+        <p class="text-muted">Monitor system health and configuration settings</p>
+    </div>
+</div>
+
+{% if stats %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-server"></i> Redis Server Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <i class="fas fa-check-circle text-success fa-2x mb-2"></i>
+                            <h6>Status</h6>
+                            <span class="badge bg-success">Connected</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <i class="fas fa-memory text-primary fa-2x mb-2"></i>
+                            <h6>Memory Usage</h6>
+                            <span class="text-muted">{{ stats.redis_info.memory_used }}</span>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <strong>Version:</strong>
+                        <span class="text-muted">{{ stats.redis_info.version }}</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <strong>Connected Clients:</strong>
+                        <span class="text-muted">{{ stats.redis_info.connected_clients }}</span>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-sm-6">
+                        <strong>Total Keys:</strong>
+                        <span class="text-muted">{{ stats.redis_info.total_keys }}</span>
+                    </div>
+                    <div class="col-sm-6">
+                        <strong>Database:</strong>
+                        <span class="text-muted">db0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-brain"></i> Memory Graph Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h3 class="text-primary">{{ stats.memory_stats.entity_count }}</h3>
+                        <small class="text-muted">Entities</small>
+                    </div>
+                    <div class="col-4">
+                        <h3 class="text-success">{{ stats.memory_stats.relation_count }}</h3>
+                        <small class="text-muted">Relations</small>
+                    </div>
+                    <div class="col-4">
+                        <h3 class="text-warning">{{ stats.memory_stats.entity_types|length }}</h3>
+                        <small class="text-muted">Types</small>
+                    </div>
+                </div>
+                {% if stats.memory_stats.entity_types %}
+                <hr>
+                <div>
+                    <strong>Entity Types:</strong>
+                    <div class="mt-2">
+                        {% for entity_type, count in stats.memory_stats.entity_types.items() %}
+                        <span class="badge bg-secondary me-1">{{ entity_type }}: {{ count }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-robot"></i> Agent Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>Persona Status:</strong>
+                        {% if stats.persona_info.has_persona %}
+                            <span class="badge bg-success"><i class="fas fa-check"></i> Configured</span>
+                        {% else %}
+                            <span class="badge bg-warning"><i class="fas fa-exclamation-triangle"></i> Using Default</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <strong>Core Instructions:</strong>
+                        {% if stats.persona_info.has_core_instructions %}
+                            <span class="badge bg-success"><i class="fas fa-check"></i> Set</span>
+                        {% else %}
+                            <span class="badge bg-secondary"><i class="fas fa-times"></i> None</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <strong>Content Statistics:</strong>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h4 class="text-info">{{ stats.content_stats.knowledge_base_docs }}</h4>
+                            <small class="text-muted">KB Documents</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ stats.content_stats.active_users }}</h4>
+                            <small class="text-muted">Active Users</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-env"></i> Environment Variables</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Variable</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for key, value in env_vars.items() %}
+                            <tr>
+                                <td><code>{{ key }}</code></td>
+                                <td>
+                                    {% if key == 'OPENAI_API_KEY' and value != 'Not Set' %}
+                                        <span class="badge bg-success">Configured</span>
+                                    {% else %}
+                                        <span class="text-muted">{{ value }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if redis_config %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-database"></i> Redis Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Configuration Key</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for key, value in redis_config.items() %}
+                            <tr>
+                                <td><code>{{ key }}</code></td>
+                                <td><span class="text-muted">{{ value }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tools"></i> System Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-heartbeat text-success fa-2x mb-2"></i>
+                                <h6>Health Check</h6>
+                                <button class="btn btn-success btn-sm" onclick="performHealthCheck()">
+                                    <i class="fas fa-check"></i> Run Check
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-sync text-primary fa-2x mb-2"></i>
+                                <h6>Refresh Stats</h6>
+                                <button class="btn btn-primary btn-sm" onclick="window.location.reload()">
+                                    <i class="fas fa-refresh"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-download text-info fa-2x mb-2"></i>
+                                <h6>Export Data</h6>
+                                <button class="btn btn-info btn-sm" onclick="exportSystemData()">
+                                    <i class="fas fa-download"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>System Error:</strong> Unable to load system statistics. Please check your Redis connection.
+</div>
+{% endif %}
+
+<div id="alertContainer"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAlert(message, type = 'success') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show mt-3">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.getElementById('alertContainer').innerHTML = alertHtml;
+}
+
+function performHealthCheck() {
+    showAlert('<i class="fas fa-spinner fa-spin"></i> Running health check...', 'info');
+    
+    fetch('/api/health')
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'healthy') {
+            showAlert('<i class="fas fa-check-circle"></i> System is healthy! Redis connection active.', 'success');
+        } else {
+            showAlert('<i class="fas fa-exclamation-triangle"></i> System health check failed: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('<i class="fas fa-times-circle"></i> Health check failed: ' + error.message, 'danger');
+    });
+}
+
+function exportSystemData() {
+    showAlert('System data export functionality would be implemented here. This would create a JSON export of configuration, memory graph, and statistics.', 'info');
+}
+
+// Auto health check on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Uncomment to enable auto health check
+    // setTimeout(performHealthCheck, 1000);
+});
+</script>
+{% endblock %}

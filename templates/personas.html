@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Personas - Agent Platform Admin{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1><i class="fas fa-user-cog"></i> Persona Management</h1>
+        <p class="text-muted">Configure agent personality and core behavioral instructions</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-user"></i> Current Persona</h5>
+                <button class="btn btn-sm btn-outline-danger" onclick="clearPersona()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="personaForm">
+                    <div class="mb-3">
+                        <textarea class="form-control" id="personaText" rows="8" placeholder="Enter persona description...">{{ current_persona or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Persona
+                    </button>
+                </form>
+                
+                {% if persona_files %}
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label">Load from preset:</label>
+                    <div class="row">
+                        {% for file in persona_files %}
+                        <div class="col-md-6 mb-2">
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="loadPersonaPreset('{{ file }}')">
+                                {{ file.replace('.txt', '').replace('_', ' ').title() }}
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-cog"></i> Core Instructions</h5>
+                <button class="btn btn-sm btn-outline-danger" onclick="clearCore()">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+            <div class="card-body">
+                <form id="coreForm">
+                    <div class="mb-3">
+                        <textarea class="form-control" id="coreText" rows="8" placeholder="Enter core behavioral instructions...">{{ current_core or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Update Instructions
+                    </button>
+                </form>
+                
+                {% if core_files %}
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label">Load from preset:</label>
+                    <div class="row">
+                        {% for file in core_files %}
+                        <div class="col-md-6 mb-2">
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="loadCorePreset('{{ file }}')">
+                                {{ file.replace('.txt', '').replace('_', ' ').title() }}
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-eye"></i> Combined System Prompt Preview</h5>
+            </div>
+            <div class="card-body">
+                <div id="systemPromptPreview" class="system-prompt-preview border rounded p-3">
+                    <div class="text-muted text-center">
+                        <i class="fas fa-spinner fa-spin"></i> Loading preview...
+                    </div>
+                </div>
+                <button class="btn btn-outline-info mt-2" onclick="refreshPreview()">
+                    <i class="fas fa-refresh"></i> Refresh Preview
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="alertContainer"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showAlert(message, type = 'success') {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show mt-3">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.getElementById('alertContainer').innerHTML = alertHtml;
+}
+
+document.getElementById('personaForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const text = document.getElementById('personaText').value;
+    
+    fetch('/personas/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=set_persona&persona_text=${encodeURIComponent(text)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        showAlert(data.message, data.success ? 'success' : 'danger');
+        if (data.success) refreshPreview();
+    });
+});
+
+document.getElementById('coreForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const text = document.getElementById('coreText').value;
+    
+    fetch('/personas/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=set_core&core_text=${encodeURIComponent(text)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        showAlert(data.message, data.success ? 'success' : 'danger');
+        if (data.success) refreshPreview();
+    });
+});
+
+function loadPersonaPreset(filename) {
+    fetch('/personas/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=load_persona&filename=${encodeURIComponent(filename)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        showAlert(data.message, data.success ? 'success' : 'danger');
+        if (data.success) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+}
+
+function loadCorePreset(filename) {
+    fetch('/personas/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `action=load_core&filename=${encodeURIComponent(filename)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        showAlert(data.message, data.success ? 'success' : 'danger');
+        if (data.success) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+}
+
+function clearPersona() {
+    if (confirm('Clear current persona?')) {
+        fetch('/personas/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'action=clear_persona'
+        })
+        .then(response => response.json())
+        .then(data => {
+            showAlert(data.message, data.success ? 'success' : 'danger');
+            if (data.success) {
+                document.getElementById('personaText').value = '';
+                refreshPreview();
+            }
+        });
+    }
+}
+
+function clearCore() {
+    if (confirm('Clear core instructions?')) {
+        fetch('/personas/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'action=clear_core'
+        })
+        .then(response => response.json())
+        .then(data => {
+            showAlert(data.message, data.success ? 'success' : 'danger');
+            if (data.success) {
+                document.getElementById('coreText').value = '';
+                refreshPreview();
+            }
+        });
+    }
+}
+
+function refreshPreview() {
+    const coreText = document.getElementById('coreText').value;
+    const personaText = document.getElementById('personaText').value;
+    
+    let preview = '';
+    
+    if (coreText.trim()) {
+        preview += '=== CORE INSTRUCTIONS ===\n' + coreText.trim() + '\n\n';
+    }
+    
+    if (personaText.trim()) {
+        if (coreText.trim()) preview += '=== PERSONA ===\n';
+        preview += personaText.trim();
+    } else {
+        if (coreText.trim()) preview += '=== PERSONA ===\n';
+        preview += 'You are ChatAgent.';
+    }
+    
+    document.getElementById('systemPromptPreview').innerHTML = 
+        '<pre class="mb-0" style="white-space: pre-wrap;">' + 
+        (preview || '<em class="text-muted">No system prompt configured</em>') + 
+        '</pre>';
+}
+
+// Initial preview load
+document.addEventListener('DOMContentLoaded', function() {
+    refreshPreview();
+});
+</script>
+{% endblock %}
